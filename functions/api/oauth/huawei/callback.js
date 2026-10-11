@@ -50,23 +50,20 @@ export async function onRequest(context) {
     return fail("华为拒绝授权：" + (tokenData.error_description || tokenData.error || "未知错误"));
   }
 
-  let userResp;
+  // 华为授权码模式：用户信息在 id_token(JWT) 中，无独立 userinfo 接口
+  let u;
   try {
-    userResp = await fetch("https://oauth-login.cloud.huawei.com/oauth2/v3/userinfo", {
-      headers: { Authorization: "Bearer " + tokenData.access_token, "Accept": "application/json" },
-    });
+    u = decodeJwtPayload(tokenData.id_token);
   } catch (e) {
-    return fail("获取用户信息失败：" + e.message);
+    return fail("解析用户信息失败：" + e.message);
   }
-  if (userResp.status !== 200) return fail("华为用户接口异常 " + userResp.status);
-  const u = await userResp.json();
 
   const session = {
     provider: "huawei",
-    huawei_id: String(u.sub || u.userID || u.userId || ""),
-    name: u.name || u.displayName || "",
+    huawei_id: String(u.sub || u.openid || u.userID || u.userId || ""),
+    name: u.name || u.display_name || u.displayName || u.nickname || "",
     email: u.email || "",
-    avatar: u.avatar || "",
+    avatar: u.picture || u.avatar || "",
     created_at: Date.now(),
   };
 
@@ -88,4 +85,16 @@ function randomHex(len) {
   const arr = new Uint8Array(len);
   crypto.getRandomValues(arr);
   return [...arr].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function decodeJwtPayload(token) {
+  if (!token) throw new Error("缺少 id_token");
+  const payload = token.split(".")[1];
+  const b64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+  const bin = atob(b64 + pad);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const text = new TextDecoder().decode(bytes);
+  return JSON.parse(text);
 }
