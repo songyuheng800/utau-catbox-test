@@ -11,6 +11,7 @@ export async function onRequest(context) {
   if (env.GITLAB_OAUTH_CLIENT_ID) providers.push("gitlab");
   if (env.GITEE_OAUTH_CLIENT_ID) providers.push("gitee");
   if (env.MS_OAUTH_CLIENT_ID) providers.push("microsoft");
+  if (env.HUAWEI_OAUTH_CLIENT_ID) providers.push("huawei");
   if (env.TWITCH_OAUTH_CLIENT_ID) providers.push("twitch");
 
   const cors = {
