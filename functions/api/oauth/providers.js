@@ -1,7 +1,7 @@
 /**
  * 查询已启用的登录方式
  * GET /api/oauth/providers
- * github / password 永远启用；google / discord / gitlab 取决于是否配置了 Client ID
+ * github / password 永远启用；其他取决于是否配置了 Client ID
  */
 export async function onRequest(context) {
   const { env } = context;
@@ -9,6 +9,8 @@ export async function onRequest(context) {
   if (env.GOOGLE_OAUTH_CLIENT_ID) providers.push("google");
   if (env.DISCORD_OAUTH_CLIENT_ID) providers.push("discord");
   if (env.GITLAB_OAUTH_CLIENT_ID) providers.push("gitlab");
+  if (env.MS_OAUTH_CLIENT_ID) providers.push("microsoft");
+  if (env.TWITCH_OAUTH_CLIENT_ID) providers.push("twitch");
 
   const cors = {
     "Access-Control-Allow-Origin": "https://songyuheng800.github.io",
