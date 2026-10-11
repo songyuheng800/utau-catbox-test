@@ -9,6 +9,7 @@ export async function onRequest(context) {
   if (env.GOOGLE_OAUTH_CLIENT_ID) providers.push("google");
   if (env.DISCORD_OAUTH_CLIENT_ID) providers.push("discord");
   if (env.GITLAB_OAUTH_CLIENT_ID) providers.push("gitlab");
+  if (env.GITEE_OAUTH_CLIENT_ID) providers.push("gitee");
   if (env.MS_OAUTH_CLIENT_ID) providers.push("microsoft");
   if (env.TWITCH_OAUTH_CLIENT_ID) providers.push("twitch");
 
