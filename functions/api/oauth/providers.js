@@ -14,8 +14,11 @@ export async function onRequest(context) {
   if (env.HUAWEI_OAUTH_CLIENT_ID) providers.push("huawei");
   if (env.TWITCH_OAUTH_CLIENT_ID) providers.push("twitch");
 
+  const ALLOWED = ["https://songyuheng800.github.io", "https://utau-4oo.pages.dev"];
+  const origin = context.request.headers.get("Origin") || "";
+  const allowOrigin = ALLOWED.includes(origin) ? origin : ALLOWED[0];
   const cors = {
-    "Access-Control-Allow-Origin": "https://songyuheng800.github.io",
+    "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Vary": "Origin",
