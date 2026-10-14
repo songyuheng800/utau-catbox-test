@@ -3,14 +3,16 @@
  * GET /api/oauth/me
  * 读 cookie utau_session → KV 查会话 → 返回用户信息（跨域 CORS，支持 credentials）
  */
-const FRONT_ORIGIN = "https://songyuheng800.github.io";
+const ALLOWED = ["https://songyuheng800.github.io", "https://utau-4oo.pages.dev"];
 
 export async function onRequest(context) {
   const { request, env } = context;
   const kv = env.AUTH_KV;
 
+  const origin = request.headers.get("Origin") || "";
+  const allowOrigin = ALLOWED.includes(origin) ? origin : ALLOWED[0];
   const cors = {
-    "Access-Control-Allow-Origin": FRONT_ORIGIN,
+    "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
