@@ -5,6 +5,9 @@
  */
 const SESSION_TTL = 7 * 24 * 3600;
 
+// 封禁账号黑名单（防止重新注册）
+const BANNED = ["豆包老傻子"];
+
 export async function onRequest(context) {
   const { request, env } = context;
   const kv = env.AUTH_KV;
@@ -38,6 +41,11 @@ export async function onRequest(context) {
     if (lower.includes(w)) {
       return json({ ok: false, msg: "用户名包含不文明词汇，请换一个" }, 400);
     }
+  }
+
+  // 封禁用户名检测
+  if (BANNED.includes(lower)) {
+    return json({ ok: false, msg: "该用户名已被封禁" }, 403);
   }
 
   const key = "pwd_user:" + username.toLowerCase();

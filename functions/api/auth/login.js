@@ -5,6 +5,9 @@
  */
 const SESSION_TTL = 7 * 24 * 3600;
 
+// 封禁账号黑名单（用户名小写）
+const BANNED = ["豆包老傻子"];
+
 export async function onRequest(context) {
   const { request, env } = context;
   const kv = env.AUTH_KV;
@@ -29,6 +32,11 @@ export async function onRequest(context) {
   const user = JSON.parse(raw);
   const hash = await pbkdf2(password, user.salt);
   if (hash !== user.hash) return json({ ok: false, msg: "用户名或密码错误" }, 401);
+
+  // 封禁检查
+  if (BANNED.includes(user.name.toLowerCase())) {
+    return json({ ok: false, msg: "此账号已被封禁" }, 403);
+  }
 
   const token = randomHex(32);
   const session = { provider: "password", username: user.name, name: user.name, created_at: Date.now() };
