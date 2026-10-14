@@ -32,7 +32,7 @@ export async function onRequest(context) {
   }
 
   // 敏感词检测
-  const BLOCKED = ["傻子", "傻逼", "sb", "草泥马", "他妈", "你妈", "操你", "狗日", "王八蛋", "脑残", "智障", "去死", "fuck", "shit", "bitch", "asshole", "豆包", "doubao", "字节", "bytedance"];
+  const BLOCKED = ["傻子", "傻逼", "sb", "草泥马", "他妈", "你妈", "操你", "狗日", "王八蛋", "脑残", "智障", "去死", "fuck", "shit", "bitch", "asshole"];
   const lower = username.toLowerCase();
   for (const w of BLOCKED) {
     if (lower.includes(w)) {
