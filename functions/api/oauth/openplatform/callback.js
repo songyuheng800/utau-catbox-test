@@ -1,14 +1,16 @@
 /**
- * OpenPlatform（自建开放平台）OAuth 回调
+ * OpenPlatform（开放平台）OAuth 回调
  * GET /api/oauth/openplatform/callback?code=...&state=...
  * 1. 校验 state（登录页固定值 utau_login，或走 start 生成的随机 state）
  * 2. 用 code 换 access_token（POST utau-4oo /api/openplatform/oauth/token，JSON）
  * 3. 拉取用户信息（GET utau-4oo /api/openplatform/api/userinfo，Bearer）
  * 4. 签发会话 cookie（存 AUTH_KV，7 天），302 跳回登录页
  */
-const FRONT_ORIGIN = "https://songyuheng800.github.io";
+const FRONT_ORIGIN = "https://utau-4oo.pages.dev";
+const FRONT_LOGIN = "https://utau-4oo.pages.dev/login";
 const SESSION_TTL = 7 * 24 * 3600;
 const OP_BASE = "https://utau-4oo.pages.dev";
+const CB_BASE = "https://utau-catbox-test.pages.dev";
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -21,7 +23,7 @@ export async function onRequest(context) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
-  const fail = (why) => Response.redirect(`${FRONT_ORIGIN}/utau/login/?err=${encodeURIComponent(why)}`, 302);
+  const fail = (why) => Response.redirect(`${FRONT_LOGIN}/?err=${encodeURIComponent(why)}`, 302);
 
   if (!code || !state) return fail("缺少 code 或 state");
   if (!kv || !CLIENT_ID || !CLIENT_SECRET) return fail("服务未配置");
@@ -79,6 +81,9 @@ export async function onRequest(context) {
     avatar: u.avatar || "",
     site: u.site || "",
     provider: "openplatform",
+    op_access_token: tokenData.access_token || "",
+    op_refresh_token: tokenData.refresh_token || "",
+    op_scope: tokenData.scope || (tokenData.scopes || []).join(" ") || "read",
     created_at: Date.now(),
   };
 
@@ -92,7 +97,7 @@ export async function onRequest(context) {
   const cookie = `utau_session=${token}; Path=/; Max-Age=${SESSION_TTL}; Secure; HttpOnly; SameSite=None`;
   return new Response(null, {
     status: 302,
-    headers: { Location: `${FRONT_ORIGIN}/utau/login/?ok=1`, "Set-Cookie": cookie },
+    headers: { Location: `${FRONT_LOGIN}/?ok=1`, "Set-Cookie": cookie },
   });
 }
 
