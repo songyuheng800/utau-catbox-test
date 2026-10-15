@@ -39,7 +39,8 @@ export async function onRequest(context) {
   const BLOCKED = ["傻子", "傻逼", "sb", "草泥马", "他妈", "你妈", "操你", "狗日",
     "王八蛋", "脑残", "智障", "去死", "fuck", "shit", "bitch", "asshole",
     "妈逼", "妈了", "妈没", "妈死", "妈蛋", "草泥", "操你", "草你", "日你",
-    "干你", "尼玛", "泥马", "煞笔", "沙比", "婊子", "废物", "垃圾", "贱"];
+    "干你", "尼玛", "泥马", "煞笔", "沙比", "婊子", "废物", "垃圾", "贱",
+    "鸡巴", "鸡吧", "几把", "jiba", "jb", "屌", "鸡鸡"];
   for (const w of BLOCKED) {
     if (lower.includes(w)) {
       return json({ ok: false, msg: "用户名包含不文明词汇，请换一个" }, 400);
