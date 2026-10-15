@@ -34,13 +34,23 @@ export async function onRequest(context) {
     return json({ ok: false, msg: "密码需 6-64 位" }, 400);
   }
 
-  // 敏感词检测
-  const BLOCKED = ["傻子", "傻逼", "sb", "草泥马", "他妈", "你妈", "操你", "狗日", "王八蛋", "脑残", "智障", "去死", "fuck", "shit", "bitch", "asshole"];
+  // 敏感词检测（升级版：谐音 + 变体 + 组合检测）
   const lower = username.toLowerCase();
+  const BLOCKED = ["傻子", "傻逼", "sb", "草泥马", "他妈", "你妈", "操你", "狗日",
+    "王八蛋", "脑残", "智障", "去死", "fuck", "shit", "bitch", "asshole",
+    "妈逼", "妈了", "妈没", "妈死", "妈蛋", "草泥", "操你", "草你", "日你",
+    "干你", "尼玛", "泥马", "煞笔", "沙比", "婊子", "废物", "垃圾", "贱"];
   for (const w of BLOCKED) {
     if (lower.includes(w)) {
       return json({ ok: false, msg: "用户名包含不文明词汇，请换一个" }, 400);
     }
+  }
+  // 谐音/组合检测
+  if (/妈[没死蛋逼了卖]/.test(username)) {
+    return json({ ok: false, msg: "用户名包含不文明词汇，请换一个" }, 400);
+  }
+  if (/(操|草|日|干)(你|他|她|妈|娘|姐|妹)/.test(username)) {
+    return json({ ok: false, msg: "用户名包含不文明词汇，请换一个" }, 400);
   }
 
   // 封禁用户名检测

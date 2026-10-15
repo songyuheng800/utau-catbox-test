@@ -6,7 +6,7 @@
 const SESSION_TTL = 7 * 24 * 3600;
 
 // 封禁账号黑名单（用户名小写）
-const BANNED = ["豆包老傻子"];
+const BANNED = ["豆包老傻子", "妈没"];
 
 export async function onRequest(context) {
   const { request, env } = context;
