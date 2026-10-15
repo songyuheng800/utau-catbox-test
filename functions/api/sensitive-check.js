@@ -157,6 +157,22 @@ export async function onRequest(context) {
     }
   }
 
+  // 4. 白名单放行：敏感词前面有正面词（反对/抵制/谴责等）则不拦截
+  const WHITELIST_PREFIX = ["反对", "抵制", "谴责", "打击", "批判", "声讨", "抗议", "坚决反对", "坚决抵制"];
+  for (const word of [...allWords]) {
+    if (word.startsWith("【模式】")) continue;
+    const idx = text.indexOf(word);
+    if (idx > 0) {
+      const before = text.substring(Math.max(0, idx - 6), idx);
+      for (const wp of WHITELIST_PREFIX) {
+        if (before.endsWith(wp)) {
+          allWords.delete(word);
+          break;
+        }
+      }
+    }
+  }
+
   return json({
     ok: true,
     hit: allWords.size > 0,
