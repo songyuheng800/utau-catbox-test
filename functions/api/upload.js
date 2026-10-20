@@ -53,12 +53,19 @@ export async function onRequest(context) {
     return json({ ok: false, msg: "连接 Gofile 失败：" + e.message }, 502);
   }
 
+  // ---- SSRF 防护：第三方返回的服务器名只允许字母/数字/连字符，禁止点、斜杠、冒号、@ 等，
+  // 保证拼接后主机一定落在 *.gofile.io，无法被用来指向内网/任意主机 ----
+  if (typeof srv !== "string" || !/^[a-z0-9][a-z0-9-]*$/i.test(srv)) {
+    return json({ ok: false, msg: "Gofile 服务器地址非法，拒绝连接" }, 502);
+  }
+  const uploadHost = `${srv}.gofile.io`;
+
   // 2. 上传文件
   let upResp;
   try {
     const fd = new FormData();
     fd.append("file", new Blob([await file.arrayBuffer()], { type: file.type || "application/octet-stream" }), rawName);
-    upResp = await fetch(`https://${srv}.gofile.io/contents/uploadfile`, {
+    upResp = await fetch(`https://${uploadHost}/contents/uploadfile`, {
       method: "POST",
       body: fd,
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36" },
@@ -78,7 +85,17 @@ export async function onRequest(context) {
   }
 
   const fileId = upData.data.fileId || "";
-  const downloadPage = upData.data.downloadPage;
+  let downloadPage = upData.data.downloadPage;
+  // 仅接受 https 且落在 gofile.io 的返回链接，拒绝第三方返回异常/钓鱼地址
+  try {
+    const u = new URL(downloadPage);
+    if (u.protocol !== "https:" || !u.hostname.endsWith("gofile.io")) {
+      throw new Error("bad");
+    }
+    downloadPage = u.toString();
+  } catch (e) {
+    return json({ ok: false, msg: "Gofile 返回的下载地址非法" }, 502);
+  }
 
   // 3. 记录到 KV（新的在前）
   const record = {
@@ -131,6 +148,11 @@ async function handleDelete(request, kv) {
 function json(obj, status) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+    },
   });
 }

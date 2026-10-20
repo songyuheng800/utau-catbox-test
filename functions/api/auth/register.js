@@ -2,11 +2,51 @@
  * 账号密码注册（自建账号体系）
  * POST /api/auth/register  {username, password}
  * 密码 PBKDF2 加盐哈希存 KV；注册成功直接签发会话
+ *
+ * 安全加固：
+ *  - Origin / Referer 白名单校验，拦截跨站伪造（CSRF）
+ *  - 按 IP 的注册频率限制，防止批量刷号
+ *  - 统一安全响应头（防点击劫持 / MIME 嗅探 / 降级）
+ *  - 保留用户名/密码/敏感词/正则校验，失败统一响应
  */
 const SESSION_TTL = 7 * 24 * 3600;
+const REG_WINDOW = 10 * 60;   // 注册频率窗口 10 分钟
+const REG_MAX = 3;            // 窗口内同一 IP 最多注册 3 个
 
 // 封禁账号黑名单（防止重新注册）
 const BANNED = ["豆包老傻子"];
+
+// 允许发起写操作的前端来源（Origin 白名单）
+const ALLOWED_ORIGINS = [
+  "https://songyuheng800.github.io",
+  "https://utau-catbox-test.pages.dev",
+  "https://utau-4oo.pages.dev",
+];
+
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'; base-uri 'self'",
+};
+
+// 写操作 CSRF 校验：Origin 命中白名单，缺失时回退 Referer 同源校验
+function originAllowed(request) {
+  const origin = request.headers.get("Origin") || "";
+  if (origin) return ALLOWED_ORIGINS.includes(origin);
+  const ref = request.headers.get("Referer") || "";
+  if (!ref) return false;
+  try { return ALLOWED_ORIGINS.includes(new URL(ref).origin); } catch (e) { return false; }
+}
+
+function clientIp(request) {
+  return (
+    request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("X-Forwarded-For")?.split(",")[0].trim() ||
+    "unknown"
+  );
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -17,6 +57,11 @@ export async function onRequest(context) {
   }
   if (request.method !== "POST") return json({ ok: false, msg: "方法错误" }, 405);
   if (!kv) return json({ ok: false, msg: "KV 未绑定" }, 500);
+
+  // CSRF：跨站伪造的注册请求会被 Origin/Referer 白名单拦截
+  if (!originAllowed(request)) {
+    return json({ ok: false, msg: "非法来源，拒绝注册" }, 403);
+  }
 
   const body = await request.json().catch(() => null);
   if (!body) return json({ ok: false, msg: "请求体必须是 JSON" }, 400);
@@ -32,6 +77,18 @@ export async function onRequest(context) {
   }
   if (password.length < 6 || password.length > 64) {
     return json({ ok: false, msg: "密码需 6-64 位" }, 400);
+  }
+
+  // 注册频率限制（按 IP）
+  const ip = clientIp(request);
+  const regKey = "reg_count:" + ip;
+  let regs = 0;
+  try {
+    const raw = await kv.get(regKey);
+    regs = raw ? parseInt(raw, 10) || 0 : 0;
+  } catch (e) { /* 忽略读取失败 */ }
+  if (regs >= REG_MAX) {
+    return json({ ok: false, msg: "注册过于频繁，请稍后再试" }, 429);
   }
 
   // 敏感词检测 v3：大词库 + 正则模式
@@ -82,6 +139,11 @@ export async function onRequest(context) {
   const user = { salt, hash, name: username, provider: "password", created_at: Date.now() };
   await kv.put(key, JSON.stringify(user));
 
+  // 计数 +1（仅在成功注册后）
+  try {
+    await kv.put(regKey, String(regs + 1), { expirationTtl: REG_WINDOW });
+  } catch (e) { /* 忽略 */ }
+
   // 注册即登录：签发会话
   const token = randomHex(32);
   const session = { provider: "password", username, name: username, created_at: Date.now() };
@@ -116,6 +178,7 @@ function cors() {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Vary": "Origin",
+    ...SECURITY_HEADERS,
   };
 }
 

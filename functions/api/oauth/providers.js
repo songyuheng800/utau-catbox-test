@@ -22,6 +22,11 @@ export async function onRequest(context) {
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Vary": "Origin",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'",
   };
   if (context.request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: cors });

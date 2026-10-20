@@ -77,7 +77,14 @@ export async function onRequest(context) {
   const cookie = `utau_session=${token}; Path=/; Max-Age=${SESSION_TTL}; Secure; HttpOnly; SameSite=None`;
   return new Response(null, {
     status: 302,
-    headers: { Location: `${FRONT_ORIGIN}/utau/login/?ok=1`, "Set-Cookie": cookie },
+    headers: {
+        Location: `${FRONT_ORIGIN}/utau/login/?ok=1`,
+        "Set-Cookie": cookie,
+        "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      },
   });
 }
 

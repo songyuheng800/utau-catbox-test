@@ -167,9 +167,11 @@ export async function onRequest(context) {
   if (request.method !== "POST") return json({ ok: false, msg: "方法错误" }, 405);
 
   const body = await request.json().catch(() => null);
-  if (!body || !body.text) return json({ ok: false, msg: "请提供 text 字段" }, 400);
+  if (!body || body.text === undefined || body.text === null) return json({ ok: false, msg: "请提供 text 字段" }, 400);
 
   const text = String(body.text);
+  // 输入长度上限，防止超大文本滥用计算资源
+  if (text.length > 50000) return json({ ok: false, msg: "文本过长，上限 50000 字符" }, 413);
   if (!text.trim()) return json({ ok: true, hit: false, words: [], count: 0 });
 
   const allWords = new Set();
@@ -218,6 +220,11 @@ function cors() {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'",
   };
 }
 function json(obj, status) {
