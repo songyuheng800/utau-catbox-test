@@ -10,7 +10,7 @@
 | POST | `/chunk` | 单片 base64 落 D1（幂等，可重试） |
 | POST | `/finalize` | 逐片对账，齐全后转正索引 + 写标签 |
 | GET | `/file?fileId=` | 流式组装下载（不全量进内存） |
-| DELETE | `/file?fileId=` | 删分片 + 索引 + 标签条目 |
+| POST/DELETE | `/delete?fileId=` | 删分片 + 索引 + 标签条目（body 也可传 `{fileId}`） |
 | GET | `/list?tag=xx` | 按标签查元信息（KV 不能全量枚举） |
 
 前端测试页：`utau-front/shards/index.html`。
