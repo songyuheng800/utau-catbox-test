@@ -3,7 +3,7 @@
  * 读正式索引，按分片顺序从各 D1 取 BLOB，用 ReadableStream 逐片拼接下发，
  * 不全量载入内存（避免大文件 OOM）。
  */
-import { json, shardKv, pickDb, idxKey, validFileId } from "./_lib.js";
+import { json, cors, shardKv, pickDb, idxKey, validFileId } from "./_lib.js";
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -42,6 +42,7 @@ export async function onRequest(context) {
   return new Response(stream, {
     status: 200,
     headers: {
+      ...cors(),
       "Content-Type": meta.mime || "application/octet-stream",
       "Content-Length": String(meta.totalSize || 0),
       "Content-Disposition": `attachment; filename*=UTF-8''${safeName}`,
