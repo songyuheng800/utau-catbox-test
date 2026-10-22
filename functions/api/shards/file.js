@@ -21,15 +21,29 @@ export async function onRequest(context) {
   let meta;
   try { meta = JSON.parse(raw); } catch (e) { return json({ ok: false, msg: "索引损坏" }, 500); }
 
+  // 并行预取窗口：保持 3 片在途，避免串行逐片 await 的往返等待
+  const PREFETCH = 3;
+  const chunks = meta.chunks || [];
+  async function readChunk(c) {
+    const db = pickDb(env, c.chunk_id);
+    const row = await db.prepare("SELECT data FROM chunks WHERE chunk_id = ?")
+      .bind(c.chunk_id).first();
+    if (!row || !row.data) throw new Error("分片缺失：" + c.chunk_id);
+    return new Uint8Array(row.data);
+  }
+
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for (const c of meta.chunks || []) {
-          const db = pickDb(env, c.chunk_id);
-          const row = await db.prepare("SELECT data FROM chunks WHERE chunk_id = ?")
-            .bind(c.chunk_id).first();
-          if (!row || !row.data) throw new Error("分片缺失：" + c.chunk_id);
-          controller.enqueue(new Uint8Array(row.data));
+        let next = 0;
+        const inflight = [];
+        for (let k = 0; k < PREFETCH && k < chunks.length; k++) {
+          inflight.push(readChunk(chunks[next++]));
+        }
+        while (inflight.length) {
+          const buf = await inflight.shift();
+          controller.enqueue(buf);
+          if (next < chunks.length) inflight.push(readChunk(chunks[next++]));
         }
         controller.close();
       } catch (e) {
